@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { ShopContext } from '../Context/ShopContext';
+import { backend_url } from '../App';
 
 const CheckoutPage = () => {
     const { getTotalCartAmount, cartItems, all_product } = useContext(ShopContext);
@@ -56,7 +57,7 @@ const CheckoutPage = () => {
         let responseData;
 
         // Fetch request to upload order details
-        await fetch('http://localhost:4000/order', {
+        await fetch(`${backend_url}/order`, {
             method: 'POST',
             headers: {
                 Accept: 'application/json',

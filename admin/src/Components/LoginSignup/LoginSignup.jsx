@@ -12,7 +12,7 @@ export const LoginSignup = ({ setIsAuthenticated }) => {
 
   const login = async () => {
     let responseData;
-    await fetch('http://localhost:4000/admin/login', {
+    await fetch(`${backend_url}/admin/login`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
