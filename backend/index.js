@@ -12,8 +12,12 @@ const bcrypt = require("bcrypt");
 app.use(express.json());
 app.use(cors());
 
-// Database Connection with MongoDB
-mongoose.connect("mongodb+srv://sddhanushdp:Dhan%402363@cluster0.sol6h.mongodb.net/e-commerce")
+require('dotenv').config();
+
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log("Connected to MongoDB"))
+    .catch(err => console.error("Could not connect to MongoDB", err));
+
 
 // API creation
 app.get("/", (req, res) => {
@@ -170,10 +174,13 @@ app.post('/signup', async (req, res) => {
 
     let cart = Array(300).fill(0);
 
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
     const user = new Users({
         name: req.body.username,
         email: req.body.email,
-        password: req.body.password,
+        password: hashedPassword,
         cartData: cart,
     });
 
@@ -185,30 +192,82 @@ app.post('/signup', async (req, res) => {
         }
     };
 
-    const token = jwt.sign(data, 'secret_ecom');
+    const token = jwt.sign(data, process.env.JWT_SECRET);
+
     res.json({ success: true, token });
 });
 
+
+// app.post('/signup', async (req, res) => {
+//     const salt = await bcrypt.genSalt(10);
+//     const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+//     const user = new Users({
+//         name: req.body.name,
+//         email: req.body.email,
+//         password: hashedPassword
+//     });
+
+//     await user.save();
+//     res.send({ success: true, user });
+// });
+
+// // User login
+// app.post('/login', async (req, res) => {
+//     let user = await Users.findOne({ email: req.body.email });
+//     if (user) {
+//         const passCompare = req.body.password === user.password;
+//         if (passCompare) {
+//             const data = {
+//                 user: {
+//                     id: user.id
+//                 }
+//             };
+//             const token = jwt.sign(data, process.env.JWT_SECRET);
+
+//             res.json({ success: true, token });
+//         } else {
+//             res.json({ success: false, errors: "Wrong Password" });
+//         }
+//     } else {
+//         res.json({ success: false, errors: "Wrong Email ID" });
+//     }
+// });
+
+
+
+
 // User login
 app.post('/login', async (req, res) => {
-    let user = await Users.findOne({ email: req.body.email });
-    if (user) {
-        const passCompare = req.body.password === user.password;
-        if (passCompare) {
-            const data = {
-                user: {
-                    id: user.id
-                }
-            };
-            const token = jwt.sign(data, 'secret_ecom');
-            res.json({ success: true, token });
-        } else {
-            res.json({ success: false, errors: "Wrong Password" });
+    try {
+        const user = await Users.findOne({ email: req.body.email });
+        if (!user) {
+            return res.json({ success: false, errors: "Wrong Email ID" });
         }
-    } else {
-        res.json({ success: false, errors: "Wrong Email ID" });
+
+        const validPassword = await bcrypt.compare(req.body.password, user.password);
+        if (!validPassword) {
+            return res.json({ success: false, errors: "Wrong Password" });
+        }
+
+        const data = {
+            user: {
+                id: user.id
+            }
+        };
+        const token = jwt.sign(data, process.env.JWT_SECRET);
+
+
+        res.json({ success: true, token });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).json({ success: false, errors: "Internal server error" });
     }
 });
+
+
+
+
 
 // Get new collections
 app.get('/newcollections', async (req, res) => {
@@ -241,7 +300,8 @@ const fetchUser = async (req, res, next) => {
         res.status(401).send({ errors: "Please authenticate using a valid token" });
     } else {
         try {
-            const data = jwt.verify(token, 'secret_ecom');
+            const data = jwt.verify(token, process.env.JWT_SECRET);
+
             req.user = data.user;
             next();
         } catch (error) {
@@ -474,7 +534,8 @@ const Admin = mongoose.model('Admin', {
 //         }
 //     };
 
-//     const token = jwt.sign(data, 'secret_ecom');
+//     const token = jwt.sign(data, process.env.JWT_SECRET);
+
 //     res.json({ success: true, token });
 // });
 
@@ -490,7 +551,8 @@ app.post('/admin/login', async (req, res) => {
                     id: user.id
                 }
             };
-            const token = jwt.sign(data, 'secret_ecom');
+            const token = jwt.sign(data, process.env.JWT_SECRET);
+
             res.json({ success: true, token });
         } else {
             res.json({ success: false, errors: "Wrong Password" });
